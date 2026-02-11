@@ -175,19 +175,26 @@ if not df.empty:
             df_baratos = df_foco[df_foco['Preco_Num'] < limite].sort_values("Preco_Num")
             
             if not df_baratos.empty:
+                # CORREÇÃO AQUI: Forçamos o valor máximo a ser um número inteiro comum (int)
+                max_vendas = int(df['Vendas_Num'].max()) if df['Vendas_Num'].max() > 0 else 100
+
                 st.dataframe(
                     df_baratos[['Produto_Nome', 'Preco_Num', 'Vendas_Num', 'Link_Url']],
                     column_config={
                         "Link_Url": st.column_config.LinkColumn("Link"),
                         "Preco_Num": st.column_config.NumberColumn("Preço", format="R$ %.2f"),
-                        "Vendas_Num": st.column_config.ProgressColumn("Vendas", min_value=0, max_value=df['Vendas_Num'].max())
+                        "Vendas_Num": st.column_config.ProgressColumn(
+                            "Vendas", 
+                            min_value=0, 
+                            max_value=max_vendas, # Agora usando a variável convertida
+                            format="%d"
+                        )
                     },
                     use_container_width=True,
                     hide_index=True
                 )
             else:
                 st.info("Nenhum produto muito barato encontrado.")
-
     # --- ABA 4: COMPARADOR FUZZY ---
     with tab4:
         st.header("⚔️ Comparador Inteligente")
@@ -210,3 +217,4 @@ if not df.empty:
 
 else:
     st.warning("Carregando dados... Se demorar, verifique o link da planilha.")
+
