@@ -91,28 +91,41 @@ def calcular_quedas(df_in):
 # === INTERFACE ===
 st.title("🚀 Painel de Inteligência de Mercado 3D")
 
+df = carregar_dados(DEFAULT_URL)
+
 with st.sidebar:
     st.header("⚙️ Controle")
     if st.button("🔄 Atualizar Dados"):
         st.cache_data.clear()
         st.rerun()
     st.divider()
-    busca_principal = st.text_input("🔍 Filtro Global:", placeholder="Ex: Vaso, Suporte")
-
-df = carregar_dados(DEFAULT_URL)
+    
+    # --- NOVOS FILTROS ---
+    st.subheader("🔍 Filtragem")
+    busca_principal = st.text_input("Incluir (Obrigatório):", placeholder="Ex: PLA, PETG")
+    busca_exclusao = st.text_input("🚫 Excluir (Banir):", placeholder="Ex: Caneta, Refil, Amostra", help="Separe as palavras por vírgula.")
+    
+    st.caption(f"Total Carregado: {len(df)} itens")
 
 if not df.empty:
-    # 1. Filtro Global
+    # 1. Filtro Global (INCLUIR)
     df_foco = df.copy()
     if busca_principal:
         df_foco = df_foco[df_foco['Produto_Nome'].str.contains(busca_principal, case=False, na=False)]
 
-    # 2. Cálculo de Quedas (Baseado no filtro atual)
+    # 2. Filtro de Exclusão (BANIR) - NOVO BLOCO
+    if busca_exclusao:
+        termos_banidos = [t.strip() for t in busca_exclusao.split(',') if t.strip()]
+        for termo in termos_banidos:
+            # Mantém apenas as linhas que NÃO contêm o termo (~ inverte a seleção)
+            df_foco = df_foco[~df_foco['Produto_Nome'].str.contains(termo, case=False, na=False)]
+
+    # 3. Cálculo de Quedas (Baseado no filtro atual)
     df_quedas = calcular_quedas(df_foco)
 
-    # 3. Métricas Gerais
+    # 4. Métricas Gerais
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Itens na Tela", len(df_foco))
+    c1.metric("Itens Filtrados", len(df_foco))
     if len(df_foco) > 0:
         media = df_foco['Preco_Num'].mean()
         c2.metric("Preço Médio", f"R$ {media:.2f}")
@@ -175,7 +188,6 @@ if not df.empty:
             df_baratos = df_foco[df_foco['Preco_Num'] < limite].sort_values("Preco_Num")
             
             if not df_baratos.empty:
-                # CORREÇÃO AQUI: Forçamos o valor máximo a ser um número inteiro comum (int)
                 max_vendas = int(df['Vendas_Num'].max()) if df['Vendas_Num'].max() > 0 else 100
 
                 st.dataframe(
@@ -186,7 +198,7 @@ if not df.empty:
                         "Vendas_Num": st.column_config.ProgressColumn(
                             "Vendas", 
                             min_value=0, 
-                            max_value=max_vendas, # Agora usando a variável convertida
+                            max_value=max_vendas, 
                             format="%d"
                         )
                     },
@@ -217,4 +229,3 @@ if not df.empty:
 
 else:
     st.warning("Carregando dados... Se demorar, verifique o link da planilha.")
-
